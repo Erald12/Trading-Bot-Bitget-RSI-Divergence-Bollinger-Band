@@ -1,0 +1,414 @@
+import ccxt
+import talib
+import numpy as np
+import time
+import ta
+import pandas as pd
+
+# Bitget API credentials
+api_key = 'bg_e10bcb723a9a90953160094bf0177465'
+secret_key = 'fc8bb8253252b1caf6c22077c656b82027076290d669cee8c746f57e44975ac5'
+passphrase = 'Easy09159562534'
+
+# Bitget trading parameters
+symbol = 'BNB/USDT'  # Trading symbol
+leverage = 10  # Leverage for the futures contract
+trade_amount = 7  # Amount to trade in each order (needs trade amount 5 USDT or more.)
+profit_target = 0.08  # Profit target in decimal format (10% = 0.1)
+stop_loss = -0.02  # Stop loss in decimal format (-10% = -0.1)
+timeframe = '1m'  # Candlestick timeframe (e.g., '1m', '5m', '1h', '1d')
+num_candles = 30  # number of candles for slope computation
+
+# Bollinger Bands parameters
+bb_period = 30  # Number of periods for the moving average and standard deviation
+bb_deviation = 2  # Number of standard deviations for the Bollinger Bands
+
+# RSI parameters
+rsi_period = 14  # Number of periods for RSI calculation
+rsi_upper_threshold = 70  # Upper threshold for overbought condition
+rsi_lower_threshold = 30  # Lower threshold for oversold condition
+
+# Create Bitget exchange instance
+exchange = ccxt.bitget({
+    'apiKey': api_key,
+    'secret': secret_key,
+    'password': passphrase,
+})
+
+# Enable testnet if needed (uncomment the line below for testnet)
+# exchange.urls['api'] = exchange.urls['test']
+
+#Function to find high points and low points on closed prices
+def find_high_points_price(ticker, timeframe, period):
+    """Finds the high points of the specified symbol's price data."""
+    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=period)
+
+    prices = [float(candle[4]) for candle in candles]  # Extract close prices
+    high_points = []
+    for i in range(1, len(prices) - 1):
+        if prices[i] > prices[i - 1] and prices[i] > prices[i + 1]:
+            high_points.append(prices[i])
+    return high_points
+
+def find_low_points_price(ticker, timeframe, period):
+    """Finds the peak points of the specified symbol's price data."""
+    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=period)
+
+    prices = [float(candle[4]) for candle in candles]  # Extract close prices
+    low_points = []
+    for i in range(1, len(prices) - 1):
+        if prices[i] < prices[i - 1] and prices[i] < prices[i + 1]:
+            low_points.append(prices[i])
+    return low_points
+
+#Function to find high points and low points on the data
+def high_points_data(data):
+    """Finds the high points of the specified symbol's price data."""
+
+    high_points = []
+    for i in range(1, len(data) - 1):
+        if data[i] > data[i - 1] and data[i] > data[i + 1]:
+            high_points.append(data[i])
+    return high_points
+
+
+def low_points_data(data):
+    """Finds the high points of the specified symbol's price data."""
+
+    low_points = []
+    for i in range(1, len(data) - 1):
+        if data[i] < data[i - 1] and data[i] < data[i + 1]:
+            low_points.append(data[i])
+    return low_points
+
+
+# Function to calculate Bollinger Bands
+def calculate_bollinger_bands(ticker):
+    # Fetch recent candlestick data
+    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=bb_period)
+
+    # Extract closing prices
+    closes = np.array([candle[4] for candle in candles])
+
+    # Calculate moving average and standard deviation
+    ma = talib.SMA(closes, timeperiod=bb_period)
+    std = talib.STDDEV(closes, timeperiod=bb_period)
+
+    # Calculate upper and lower Bollinger Bands
+    upper_band = ma + bb_deviation * std
+    lower_band = ma - bb_deviation * std
+
+    return ma, upper_band, lower_band
+
+# Calculate Slope
+def calculate_slope(x1,x2,y1,y2):
+    slope = (y2-y1)/(x2-x1)
+    return slope
+
+#Calculate the slope of price
+#def calculate_price_slope(ticker, timeframe):
+#    # Fetch recent candlestick data
+#    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=30)
+#    closes = np.array([candle[4] for candle in candles])
+#    calculate_price_slope = calculate_slope(closes)
+#    return calculate_price_slope
+
+# Calculate EMA for RSI
+def calculate_ema(data, window=14):
+    ema = np.zeros_like(data)
+    ema[window-1] = np.mean(data[:window])
+    smoothing_factor = 2 / (window + 1)
+
+    for i in range(window, len(data)):
+        ema[i] = (data[i] * smoothing_factor) + (ema[i-1] * (1 - smoothing_factor))
+
+    return ema
+
+# Function to calculate RSI
+def calculate_rsi(ticker, timeframe, rsi_period):
+    # Fetch recent candlestick data
+    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=rsi_period+59)
+
+    # Extract closing prices
+    closes = [candle[4] for candle in candles]
+
+    # Calculate RSI
+    gains = []
+    losses = []
+
+    for i in range(1, len(closes)):
+        diff = closes[i] - closes[i-1]
+        if diff > 0:
+            gains.append(diff)
+            losses.append(0)
+        else:
+            gains.append(0)
+            losses.append(-diff)
+
+    avg_gain = sum(gains[:rsi_period]) / rsi_period
+    avg_loss = sum(losses[:rsi_period]) / rsi_period
+
+    rsi = []
+    rsi.append(100 - (100 / (1 + (avg_gain / avg_loss))))
+
+    for i in range(rsi_period, len(closes)):
+        avg_gain = (avg_gain * (rsi_period - 1) + gains[i-1]) / rsi_period
+        avg_loss = (avg_loss * (rsi_period - 1) + losses[i-1]) / rsi_period
+        relative_strength = avg_gain / avg_loss
+        rsi.append(100 - (100 / (1 + relative_strength)))
+
+    return rsi
+
+# Function to check if the price is above the upper Bollinger Band and RSI is above the upper threshold
+#def is_price_above_upper_band_and_rsi_overbought(ticker, timeframe, rsi_period):
+#    ma, upper_band, _ = calculate_bollinger_bands(ticker)
+#    rsi = calculate_rsi(ticker, timeframe, rsi_period)
+#    current_price = exchange.fetch_ticker(ticker)['last']
+#    current_rsi = rsi[-1]
+
+#    return current_price > upper_band[-1] and current_rsi > rsi_upper_threshold
+
+# Function to check if the price crosses upper Bollinger Band
+def is_price_crosses_upper_band(ticker):
+    ma, upper_band, _ = calculate_bollinger_bands(ticker)
+    current_price = exchange.fetch_ticker(ticker)['last']
+
+    return (current_price > upper_band[-2] or current_price > upper_band[-3] or current_price > upper_band[-4]) and current_price < upper_band[-1]
+
+# Function to check if the price crosses to lower Bollinger Band
+def is_price_crosses_lower_band(ticker):
+    ma, _, lower_band = calculate_bollinger_bands(ticker)
+    current_price = exchange.fetch_ticker(ticker)['last']
+
+    return (current_price < lower_band[-2] or current_price < lower_band[-3] or current_price < lower_band[-4]) and current_price > lower_band[-1]
+
+
+# Function to check if the price is below the lower Bollinger Band and RSI is below the lower threshold
+#def is_price_below_lower_band_and_rsi_oversold(ticker, timeframe, rsi_period):
+#    ma, _, lower_band = calculate_bollinger_bands(ticker)
+#    rsi = calculate_rsi(ticker, timeframe, rsi_period)
+#    current_price = exchange.fetch_ticker(ticker)['last']
+#    current_rsi = rsi[-1]
+
+#    return current_price < lower_band[-1] and current_rsi < rsi_lower_threshold
+
+#Function to check stochastic slow
+#def check_stochastic_strategy(ticker):
+
+    # Fetch recent candlestick data
+#    candles = exchange.fetch_ohlcv(ticker, timeframe=timeframe, limit=50)
+
+    # Extract OHLC prices
+#    opens = np.array([candle[1] for candle in candles], dtype=float)
+#    highs = np.array([candle[2] for candle in candles], dtype=float)
+#    lows = np.array([candle[3] for candle in candles], dtype=float)
+#    closes = np.array([candle[4] for candle in candles], dtype=float)
+
+    # Convert to DataFrame
+#    df = pd.DataFrame({'open': opens, 'high': highs, 'low': lows, 'close': closes})
+
+    # Calculate Stochastic Slow indicator
+#    stochastic = ta.momentum.StochasticOscillator(
+#        close=df['close'],
+#        high=df['high'],
+#        low=df['low'],
+#        window=14,
+#        smooth_window=3
+#    )
+#    slowk = stochastic.stoch()
+#    slowd = stochastic.stoch_signal()
+
+    # Check for the strategy condition
+#    if slowk.iloc[-1] < 20 and slowd.iloc[-1] < 20 and slowk.iloc[-2] > slowd.iloc[-2] and slowk.iloc[-1] > slowd.iloc[-1]:
+#        return 'long'
+#    elif slowk.iloc[-1] > 80 and slowd.iloc[-1] > 80 and slowk.iloc[-2] < slowd.iloc[-2] and slowk.iloc[-1] < slowd.iloc[-1]:
+#        return 'short'
+
+#    return None
+
+###############################################################################################
+# Function to place a long order
+def place_long_order(ticker, amount):
+    ticker_price = exchange.fetch_ticker(ticker)['last']
+    total_amount = amount * ticker_price
+
+    order = exchange.create_order(
+        symbol=ticker,
+        type='market',
+        side='buy',
+        amount=total_amount,
+        params={'leverage': leverage, 'createMarketBuyOrderRequiresPrice': False}
+    )
+    print('Long order placed:', order)
+
+# Function to place a short order
+def place_short_order(ticker, amount):
+    ticker_price = exchange.fetch_ticker(ticker)['last']
+    total_amount = amount * ticker_price
+
+    order = exchange.create_order(
+        symbol=ticker,
+        type='market',
+        side='sell',
+        amount=total_amount,
+        params={'leverage': leverage, 'createMarketBuyOrderRequiresPrice': False}
+    )
+    print('Short order placed:', order)
+
+# Function to calculate account balance
+def get_account_balance():
+    try:
+        account_info = exchange.fetch_balance()
+        balance = account_info['total']['USDT']
+        return balance
+    except Exception as e:
+        print(f"Failed to fetch account balance: {e}")
+        return None
+
+# Function to close an open position
+def close_position():
+    # Fetch open orders
+    orders = exchange.fetch_open_orders(symbol)
+
+    if len(orders) > 0:
+        # Cancel open orders
+        for order in orders:
+            exchange.cancel_order(order['id'])
+
+        # Close the position
+        position = exchange.fetch_position(symbol)
+        side = position['side']
+
+        if side == 'buy':
+            order = exchange.create_order(
+                symbol=symbol,
+                type='market',
+                side='sell',
+                amount=position['amount'],
+                params={'leverage': leverage}
+            )
+        elif side == 'sell':
+            order = exchange.create_order(
+                symbol=symbol,
+                type='market',
+                side='buy',
+                amount=position['amount'],
+                params={'leverage': leverage}
+            )
+
+            print('Position closed:', order)
+
+# Function to check if there is an open position
+def is_position_open():
+    # Fetch open orders
+    orders = exchange.fetch_open_orders(symbol)
+
+    return len(orders) > 0
+###################################################################
+# Main trading loop
+while True:
+    try:
+        print('#####################################################')
+        #strategy = check_stochastic_strategy(symbol)
+        close_candles = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=60)
+        close_prices2 = list(np.array([candle[4] for candle in close_candles], dtype=float))
+        high_points_price = find_high_points_price(symbol, timeframe, 60)
+        low_points_price = find_low_points_price(symbol, timeframe, 60)
+        high_of_high_price = high_points_data(high_points_price)
+        high_of_high_price_max = [max(high_of_high_price)]
+        low_of_low_price = low_points_data(low_points_price)
+        low_of_low_price_min = [min(low_of_low_price)]
+
+        if high_of_high_price_max[0]!=high_points_price[-1]:
+            high_of_high_price_max.append(high_points_price[-1])
+        else:
+            print('')
+        if low_of_low_price_min[0]!=low_points_price[-1]:
+            low_of_low_price_min.append(low_points_price[-1])
+        else:
+            print('')
+        print('Recent High: ',high_of_high_price_max)
+        print('Recent Low: ',low_of_low_price_min)
+        currency_price1 = exchange.fetch_ticker(symbol)['last']
+        ma, upper_band, lower_band = calculate_bollinger_bands(symbol)
+        ################## RSI PART ###############################
+        recent_rsi = calculate_rsi(symbol, timeframe, rsi_period)
+        # Fetch recent candlestick data
+        candles1 = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=50)
+        # Extract close prices
+        close_prices1 = np.array([candle[4] for candle in candles1], dtype=float)
+        # Extract OHLC prices
+        opens = np.array([candle[1] for candle in candles1], dtype=float)
+        highs = np.array([candle[2] for candle in candles1], dtype=float)
+        lows = np.array([candle[3] for candle in candles1], dtype=float)
+        closes = np.array([candle[4] for candle in candles1], dtype=float)
+
+        # Convert to DataFrame
+        #df = pd.DataFrame({'open': opens, 'high': highs, 'low': lows, 'close': closes})
+
+        # Calculate Stochastic Slow indicator
+        #stochastic = ta.momentum.StochasticOscillator(
+        #    close=df['close'],
+        #    high=df['high'],
+        #    low=df['low'],
+        #    window=14,
+        #    smooth_window=3
+        #)
+        #slowk = stochastic.stoch()
+        #slowd = stochastic.stoch_signal()
+        # Calculate Stochastic Slow indicator
+        print('#####################################################')
+        print('Price: ',currency_price1, symbol)
+        my_balance = get_account_balance()
+        print('Balance: ',my_balance, 'USDT')
+        print('--------Bollinger Band---------')
+        print('Moving Average',ma[-1])
+        print('Upper Band', upper_band[-1])
+        print('Lower Band', lower_band[-1])
+        print('#####################################################')
+        price_high_slope = calculate_slope(close_prices2.index(high_of_high_price_max[0]),close_prices2.index(high_of_high_price_max[1]),high_of_high_price_max[0],high_of_high_price_max[1])
+        price_low_slope = calculate_slope(close_prices2.index(low_of_low_price_min[0]),close_prices2.index(low_of_low_price_min[1]),low_of_low_price_min[0], low_of_low_price_min[1])
+        rsi_high_slope = calculate_slope(close_prices2.index(high_of_high_price_max[0]),close_prices2.index(high_of_high_price_max[1]),recent_rsi[close_prices2.index(high_of_high_price_max[0])],recent_rsi[close_prices2.index(high_of_high_price_max[1])])
+        rsi_low_slope = calculate_slope(close_prices2.index(low_of_low_price_min[0]),close_prices2.index(low_of_low_price_min[1]),recent_rsi[close_prices2.index(low_of_low_price_min[0])],recent_rsi[close_prices2.index(low_of_low_price_min[1])])
+        print('Price High Slope: ',price_high_slope)
+        print('Price Low Slope: ', price_low_slope)
+        print('RSI High Slope: ', rsi_high_slope)
+        print('RSI Low Slope: ', rsi_low_slope)
+        if price_high_slope>0 and rsi_high_slope<0:
+            print('Bearish Divergence Confirmed')
+        elif price_low_slope<0 and rsi_low_slope>0:
+            print('Bullish Divergence Confirmed')
+        elif price_high_slope<0 and rsi_high_slope>0:
+            print('Hidden Bearish Divergence Confirmed')
+        elif price_low_slope>0 and rsi_low_slope<0:
+            print('Hidden Bullish Divergence')
+        else:
+            print('No Confirmation')
+        print('#####################################################')
+        if (is_price_crosses_lower_band(symbol) and (price_low_slope<0 and rsi_low_slope>0)) and (my_balance>=10):
+            print('Long Trade Confirmed')
+            # Place long order
+            place_long_order(symbol, trade_amount)
+
+        elif (is_price_crosses_upper_band(symbol) and (price_high_slope>0 and rsi_high_slope<0)) and (my_balance>=10):
+            print('Short Trade Confirmed')
+            # Place short order
+            place_short_order(symbol, trade_amount)
+
+        if is_position_open():
+            # Fetch position details
+            position = exchange.fetch_position(symbol)
+            # Calculate profit/loss percentage
+            entry_price = position['info']['entryPrice']
+            current_price = exchange.fetch_ticker(symbol)['last']
+            pnl_percent = (current_price - entry_price) / entry_price
+
+            if pnl_percent >= profit_target:
+                close_position()
+            elif pnl_percent <= stop_loss:
+                close_position()
+
+    except Exception as e:
+        print('An error occurred:', str(e))
+
+    time.sleep(60)  # Sleep for 1 minute before checking the strategy again
