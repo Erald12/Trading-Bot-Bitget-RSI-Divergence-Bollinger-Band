@@ -1214,7 +1214,7 @@ while True:
             print('No Opened Trades')
 
         if my_balance> 30:
-            Finance.append(my_balance)
+            Finance.append(Balance[0])
         else:
             print('')
 
