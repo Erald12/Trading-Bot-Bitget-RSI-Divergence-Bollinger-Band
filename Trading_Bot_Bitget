@@ -6,12 +6,12 @@ import ta
 import pandas as pd
 
 # Bitget API credentials
-api_key = 'API KEY'
-secret_key = 'SECRET KEY'
-passphrase = 'PASSPHRASE'
+api_key = 'Your API Key'
+secret_key = 'Secret Key'
+passphrase = 'Passphrase'
 
-Finance = [15,15,15,15,15,15,15,15,15] # You can add your amount by 15
-Balance = [15] #Amount for trading
+Finance = [15,15,15,15,15,15,15,15,15]
+Balance = [15]
 Opened_long = []
 Open_long_price = []
 Opened_short = []
@@ -203,15 +203,15 @@ def check_stochastic_strategy(ticker):
 
 
 # Bitget trading parameters
-symbol = 'BNB/USDT'  # Trading symbol, you can change any currency
-symbol2 = 'XRP/USDT' # Trading symbol, you can change any currency
-symbol3 = 'BTC/USDT' # Trading symbol, you can change any currency
-symbol4 = 'BCH/USDT' # Trading symbol, you can change any currency
-symbol5 = 'MATIC/USDT' # Trading symbol, you can change any currency
-symbol6 = 'LTC/USDT' # Trading symbol, you can change any currency
-symbol7 = 'DOT/USDT' # Trading symbol, you can change any currency
-symbol8 = 'DOGE/USDT' # Trading symbol, you can change any currency
-symbol9 = 'EOS/USDT' # Trading symbol, you can change any currency
+symbol = 'BNB/USDT'  # Trading symbol
+symbol2 = 'XRP/USDT'
+symbol3 = 'BTC/USDT'
+symbol4 = 'BCH/USDT'
+symbol5 = 'MATIC/USDT'
+symbol6 = 'LTC/USDT'
+symbol7 = 'DOT/USDT'
+symbol8 = 'DOGE/USDT'
+symbol9 = 'EOS/USDT'
 
 leverage = 10  # Leverage for the futures contract
 trade_amount = 7  # Amount to trade in each order (needs trade amount 5 USDT or more.)
@@ -409,7 +409,7 @@ def close_position_long(ticker):
     ticker_price = exchange.fetch_ticker(ticker)['last']
     percent_long = (ticker_price - Open_long_price[0])/(Open_long_price[0])
     # Close open orders
-    balance_clear_from_long = Balance.append(Opened_long[0]*abs(percent_long)*leverage)
+    balance_clear_from_long = Balance.append((Opened_long[0]*percent_long*leverage)+Opened_long[0])
     clear_open_long_price = Open_long_price.clear()
     clear_open_long = Opened_long.clear()
     return balance_clear_from_long, clear_open_long_price, clear_open_long
@@ -418,7 +418,7 @@ def close_position_short(ticker):
     # Fetch open orders
     ticker_price = exchange.fetch_ticker(ticker)['last']
     percent_short = (ticker_price - Open_short_price[0]) / (Open_short_price[0])
-    balance_clear_from_short = Balance.append(Opened_short[0] * abs(percent_short) * leverage)
+    balance_clear_from_short = Balance.append((Opened_short[0] * abs(percent_short) * leverage)+Opened_short[0])
     clear_open_short_price = Open_short_price.clear()
     clear_open_short = Opened_short.clear()
     return balance_clear_from_short, clear_open_short_price, clear_open_short
@@ -536,18 +536,30 @@ while True:
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol):
 
-            print('Opened Position: ', Open_long_price, symbol, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol))
             if (gain(Open_long_price[0], currency_price_symbol) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol) <= -0.001):
                 close_position_long(symbol)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol):
-            print('Opened Position: ', Open_short_price, symbol, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol))
             if (gain(Open_short_price[0], currency_price_symbol) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol) <= -0.001):
                 close_position_short(symbol)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -606,18 +618,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol2):
-            print('Opened Position: ', Open_long_price, symbol2, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol2, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol2))
             if (gain(Open_long_price[0], currency_price_symbol2) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol2) <= -0.001):
                 close_position_long(symbol2)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol2):
-            print('Opened Position: ', Open_short_price, symbol2, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol2, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol2))
             if (gain(Open_short_price[0], currency_price_symbol2) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol2) <= -0.001):
                 close_position_short(symbol2)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -673,18 +697,30 @@ while True:
             print('Amount to trade : ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol3):
-            print('Opened Position: ', Open_long_price, symbol3, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol3, '   Amount: ', Opened_long,'PNL: ',gain(Open_long_price[0], currency_price_symbol3))
             if (gain(Open_long_price[0], currency_price_symbol3) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol3) <= -0.001):
                 close_position_long(symbol3)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol3):
-            print('Opened Position: ', Open_short_price, symbol3, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol3, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol3))
             if (gain(Open_short_price[0], currency_price_symbol3) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol3) <= -0.001):
                 close_position_short(symbol3)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -741,18 +777,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol4):
-            print('Opened Position: ', Open_long_price, symbol4, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol4, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol4))
             if (gain(Open_long_price[0], currency_price_symbol4) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol4) <= -0.001):
                 close_position_long(symbol4)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol4):
-            print('Opened Position: ', Open_short_price, symbol4, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol4, '   Amount: ', Opened_short,'PNL: ',gain(Open_short_price[0], currency_price_symbol4))
             if (gain(Open_short_price[0], currency_price_symbol4) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol4) <= -0.001):
                 close_position_short(symbol4)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -810,18 +858,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol5):
-            print('Opened Position: ', Open_long_price, symbol5, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol5, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol5))
             if (gain(Open_long_price[0], currency_price_symbol5) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol5) <= -0.001):
                 close_position_long(symbol5)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol5):
-            print('Opened Position: ', Open_short_price, symbol5, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol5, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol5))
             if (gain(Open_short_price[0], currency_price_symbol5) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol5) <= -0.001):
                 close_position_short(symbol5)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -878,18 +938,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol6):
-            print('Opened Position: ', Open_long_price, symbol6, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol6, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol6))
             if (gain(Open_long_price[0], currency_price_symbol6) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol6) <= -0.001):
                 close_position_long(symbol6)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol6):
-            print('Opened Position: ', Open_short_price, symbol6, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol6, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol6))
             if (gain(Open_short_price[0], currency_price_symbol6) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol6) <= -0.001):
                 close_position_short(symbol6)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -946,18 +1018,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol7):
-            print('Opened Position: ', Open_long_price, symbol7, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol7, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol7))
             if (gain(Open_long_price[0], currency_price_symbol7) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol7) <= -0.001):
                 close_position_long(symbol7)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol7):
-            print('Opened Position: ', Open_short_price, symbol7, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol7, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol7))
             if (gain(Open_short_price[0], currency_price_symbol7) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol7) <= -0.001):
                 close_position_short(symbol7)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -1015,18 +1099,30 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol8):
-            print('Opened Position: ', Open_long_price, symbol8, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol8, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol8))
             if (gain(Open_long_price[0], currency_price_symbol8) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol8) <= -0.001):
                 close_position_long(symbol8)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol8):
-            print('Opened Position: ', Open_short_price, symbol8, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol8, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol8))
             if (gain(Open_short_price[0], currency_price_symbol8) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol8) <= -0.001):
                 close_position_short(symbol8)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
@@ -1087,25 +1183,37 @@ while True:
             print('Amount to trade: ', '0')
 
         if len(Opened_long) > 0 and (symbol_set[0] == symbol9):
-            print('Opened Position: ', Open_long_price, symbol9, '   Amount: ', Opened_long)
+            print('Opened Position: ', Open_long_price, symbol9, '   Amount: ', Opened_long, 'PNL: ',gain(Open_long_price[0], currency_price_symbol9))
             if (gain(Open_long_price[0], currency_price_symbol9) >= 0.0032) or (gain(Open_long_price[0], currency_price_symbol9) <= -0.001):
                 close_position_long(symbol9)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         elif len(Opened_short) > 0 and (symbol_set[0] == symbol9):
-            print('Opened Position: ', Open_short_price, symbol9, '   Amount: ', Opened_short)
+            print('Opened Position: ', Open_short_price, symbol9, '   Amount: ', Opened_short, 'PNL: ',gain(Open_short_price[0], currency_price_symbol9))
             if (gain(Open_short_price[0], currency_price_symbol9) >= 0.0032) or (gain(Open_short_price[0], currency_price_symbol9) <= -0.001):
                 close_position_short(symbol9)
                 symbol_set.clear()
+                if my_balance <= 5:
+                    Balance[0] = Balance[0]+float(Finance.pop())
+                    print('Amount to trade was added')
+                    print('Wallet Balance : ', sum(Finance), 'Amount to trade: ', Balance[0])
+                else:
+                    print('')
                 print('Position Closed')
             else:
                 print('No Close')
         else:
             print('No Opened Trades')
 
-        if my_balance> 15:
+        if my_balance> 30:
             Finance.append(my_balance)
         else:
             print('')
@@ -1120,4 +1228,4 @@ while True:
         print('An error occurred:', str(e))
 
 
-    time.sleep(60)  # Sleep for 1 minute before checking the strategy again
+    time.sleep(3)  # Sleep for 3 seconds before checking the strategy again
