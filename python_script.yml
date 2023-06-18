@@ -1,0 +1,16 @@
+name: Python Script
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Python script
+        run: python your_script.py
