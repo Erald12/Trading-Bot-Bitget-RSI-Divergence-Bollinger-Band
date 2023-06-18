@@ -13,4 +13,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Run Python script
-        run: python your_script.py
+        run: sample.py
