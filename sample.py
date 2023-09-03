@@ -6,9 +6,9 @@ import ta
 import pandas as pd
 
 # Bitget API credentials
-api_key = 'bg_e10bcb723a9a90953160094bf0177465'
-secret_key = 'fc8bb8253252b1caf6c22077c656b82027076290d669cee8c746f57e44975ac5'
-passphrase = 'Easy09159562534'
+api_key = ''
+secret_key = ''
+passphrase = ''
 
 Finance = [15,15,15,15,15,15,15,15,15]
 Balance = [15]
